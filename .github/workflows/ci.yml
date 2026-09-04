@@ -39,12 +39,12 @@ jobs:
       - name: Run tests
         working-directory: backend
         run: |
-          pytest -v
+          python -m pytest -v
 
       - name: Run lint
         working-directory: backend
         run: |
-          ruff check .
+          python -m ruff check .
 
 
   frontend-build:
