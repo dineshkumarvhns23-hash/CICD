@@ -1,0 +1,178 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows:
+      - CI
+    types:
+      - completed
+
+jobs:
+
+  deploy:
+    name: Deploy to Local Kubernetes
+    runs-on: self-hosted
+
+    # Deploy only when the CI workflow completed successfully
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    permissions:
+      contents: read
+
+    env:
+      NAMESPACE: cicd
+      BACKEND_DEPLOYMENT: cicd-backend
+      FRONTEND_DEPLOYMENT: cicd-frontend
+      BACKEND_CONTAINER: backend
+      FRONTEND_CONTAINER: frontend
+      BACKEND_IMAGE: ghcr.io/dineshkumarvhns23-hash/cicd-backend
+      FRONTEND_IMAGE: ghcr.io/dineshkumarvhns23-hash/cicd-frontend
+
+    steps:
+
+      # --------------------------------------------------
+      # 1. Checkout the commit that triggered CI
+      # --------------------------------------------------
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      # --------------------------------------------------
+      # 2. Display deployment information
+      # --------------------------------------------------
+      - name: Display deployment information
+        shell: powershell
+        run: |
+          Write-Host "======================================"
+          Write-Host "Starting Kubernetes Deployment"
+          Write-Host "======================================"
+          Write-Host "Commit SHA: ${{ github.event.workflow_run.head_sha }}"
+          Write-Host "Namespace: $env:NAMESPACE"
+          Write-Host "Backend Image: $env:BACKEND_IMAGE"
+          Write-Host "Frontend Image: $env:FRONTEND_IMAGE"
+          Write-Host "======================================"
+
+      # --------------------------------------------------
+      # 3. Verify kubectl
+      # --------------------------------------------------
+      - name: Verify Kubernetes connection
+        shell: powershell
+        run: |
+          kubectl version --client
+          kubectl cluster-info
+          kubectl get nodes
+
+      # --------------------------------------------------
+      # 4. Verify Kubernetes namespace
+      # --------------------------------------------------
+      - name: Verify CICD namespace
+        shell: powershell
+        run: |
+          kubectl get namespace $env:NAMESPACE
+
+      # --------------------------------------------------
+      # 5. Deploy backend
+      # --------------------------------------------------
+      - name: Deploy backend
+        shell: powershell
+        env:
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          $IMAGE = "$env:BACKEND_IMAGE`:$env:IMAGE_TAG"
+
+          Write-Host "Deploying backend image:"
+          Write-Host $IMAGE
+
+          kubectl set image deployment/$env:BACKEND_DEPLOYMENT `
+            $env:BACKEND_CONTAINER=$IMAGE `
+            -n $env:NAMESPACE
+
+          kubectl set env deployment/$env:BACKEND_DEPLOYMENT `
+            DEPLOYED_COMMIT=$env:IMAGE_TAG `
+            -n $env:NAMESPACE
+
+      # --------------------------------------------------
+      # 6. Deploy frontend
+      # --------------------------------------------------
+      - name: Deploy frontend
+        shell: powershell
+        env:
+          IMAGE_TAG: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          $IMAGE = "$env:FRONTEND_IMAGE`:$env:IMAGE_TAG"
+
+          Write-Host "Deploying frontend image:"
+          Write-Host $IMAGE
+
+          kubectl set image deployment/$env:FRONTEND_DEPLOYMENT `
+            $env:FRONTEND_CONTAINER=$IMAGE `
+            -n $env:NAMESPACE
+
+          kubectl set env deployment/$env:FRONTEND_DEPLOYMENT `
+            DEPLOYED_COMMIT=$env:IMAGE_TAG `
+            -n $env:NAMESPACE
+
+      # --------------------------------------------------
+      # 7. Wait for backend rollout
+      # --------------------------------------------------
+      - name: Wait for backend rollout
+        shell: powershell
+        run: |
+          kubectl rollout status `
+            deployment/$env:BACKEND_DEPLOYMENT `
+            -n $env:NAMESPACE `
+            --timeout=5m
+
+      # --------------------------------------------------
+      # 8. Wait for frontend rollout
+      # --------------------------------------------------
+      - name: Wait for frontend rollout
+        shell: powershell
+        run: |
+          kubectl rollout status `
+            deployment/$env:FRONTEND_DEPLOYMENT `
+            -n $env:NAMESPACE `
+            --timeout=5m
+
+      # --------------------------------------------------
+      # 9. Verify deployed images
+      # --------------------------------------------------
+      - name: Verify deployed images
+        shell: powershell
+        run: |
+          Write-Host "Backend image:"
+          kubectl get deployment $env:BACKEND_DEPLOYMENT `
+            -n $env:NAMESPACE `
+            -o jsonpath="{.spec.template.spec.containers[0].image}"
+
+          Write-Host ""
+
+          Write-Host "Frontend image:"
+          kubectl get deployment $env:FRONTEND_DEPLOYMENT `
+            -n $env:NAMESPACE `
+            -o jsonpath="{.spec.template.spec.containers[0].image}"
+
+          Write-Host ""
+
+      # --------------------------------------------------
+      # 10. Verify running pods
+      # --------------------------------------------------
+      - name: Verify pods
+        shell: powershell
+        run: |
+          kubectl get pods -n $env:NAMESPACE -o wide
+
+      # --------------------------------------------------
+      # 11. Deployment summary
+      # --------------------------------------------------
+      - name: Deployment completed
+        shell: powershell
+        run: |
+          Write-Host "======================================"
+          Write-Host "CD DEPLOYMENT SUCCESSFUL"
+          Write-Host "======================================"
+          Write-Host "Commit: ${{ github.event.workflow_run.head_sha }}"
+          Write-Host "Backend: $env:BACKEND_IMAGE:${{ github.event.workflow_run.head_sha }}"
+          Write-Host "Frontend: $env:FRONTEND_IMAGE:${{ github.event.workflow_run.head_sha }}"
+          Write-Host "======================================"
