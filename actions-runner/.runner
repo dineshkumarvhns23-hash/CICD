@@ -1,0 +1,11 @@
+﻿{
+  "agentId": 21,
+  "agentName": "STUDIO-60",
+  "poolId": 1,
+  "poolName": "Default",
+  "serverUrl": "https://pipelinesghubeus15.actions.githubusercontent.com/Nz679XDrPKyjXW1zOwARCiXFcBTlm3ZNDBEQYjrFZsujaHxBea/",
+  "gitHubUrl": "https://github.com/dineshkumarvhns23-hash/CICD",
+  "workFolder": "_work",
+  "useV2Flow": true,
+  "serverUrlV2": "https://broker.actions.githubusercontent.com/"
+}

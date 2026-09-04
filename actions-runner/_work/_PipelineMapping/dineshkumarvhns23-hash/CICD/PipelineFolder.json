@@ -1,0 +1,12 @@
+﻿{
+  "repositoryName": "dineshkumarvhns23-hash/CICD",
+  "pipelineDirectory": "CICD",
+  "workspaceDirectory": "CICD\\CICD",
+  "repositories": {
+    "dineshkumarvhns23-hash/CICD": {
+      "repositoryPath": "CICD\\CICD",
+      "lastRunOn": "09/04/2026 15:22:22 +05:30"
+    }
+  },
+  "lastRunOn": "09/04/2026 15:22:22 +05:30"
+}

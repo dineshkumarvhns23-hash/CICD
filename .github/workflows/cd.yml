@@ -27,6 +27,7 @@ jobs:
       FRONTEND_CONTAINER: frontend
       BACKEND_IMAGE: ghcr.io/dineshkumarvhns23-hash/cicd-backend
       FRONTEND_IMAGE: ghcr.io/dineshkumarvhns23-hash/cicd-frontend
+      INGRESS_NAME: cicd-ingress
 
     steps:
 
@@ -51,6 +52,7 @@ jobs:
           Write-Host "Namespace: $env:NAMESPACE"
           Write-Host "Backend Image: $env:BACKEND_IMAGE"
           Write-Host "Frontend Image: $env:FRONTEND_IMAGE"
+          Write-Host "Ingress: $env:INGRESS_NAME"
           Write-Host "======================================"
 
       # --------------------------------------------------
@@ -72,7 +74,22 @@ jobs:
           kubectl get namespace $env:NAMESPACE
 
       # --------------------------------------------------
-      # 5. Deploy backend
+      # 5. Apply Kubernetes Ingress
+      # --------------------------------------------------
+      - name: Apply Ingress
+        shell: powershell
+        run: |
+          Write-Host "Applying Kubernetes Ingress..."
+
+          kubectl apply -f k8s/ingress.yaml
+
+          Write-Host "Ingress applied successfully."
+
+          kubectl get ingress $env:INGRESS_NAME `
+            -n $env:NAMESPACE
+
+      # --------------------------------------------------
+      # 6. Deploy backend
       # --------------------------------------------------
       - name: Deploy backend
         shell: powershell
@@ -93,7 +110,7 @@ jobs:
             -n $env:NAMESPACE
 
       # --------------------------------------------------
-      # 6. Deploy frontend
+      # 7. Deploy frontend
       # --------------------------------------------------
       - name: Deploy frontend
         shell: powershell
@@ -114,7 +131,7 @@ jobs:
             -n $env:NAMESPACE
 
       # --------------------------------------------------
-      # 7. Wait for backend rollout
+      # 8. Wait for backend rollout
       # --------------------------------------------------
       - name: Wait for backend rollout
         shell: powershell
@@ -125,7 +142,7 @@ jobs:
             --timeout=5m
 
       # --------------------------------------------------
-      # 8. Wait for frontend rollout
+      # 9. Wait for frontend rollout
       # --------------------------------------------------
       - name: Wait for frontend rollout
         shell: powershell
@@ -136,7 +153,26 @@ jobs:
             --timeout=5m
 
       # --------------------------------------------------
-      # 9. Verify deployed images
+      # 10. Verify Ingress
+      # --------------------------------------------------
+      - name: Verify Ingress
+        shell: powershell
+        run: |
+          Write-Host "======================================"
+          Write-Host "Verifying Kubernetes Ingress"
+          Write-Host "======================================"
+
+          kubectl get ingress $env:INGRESS_NAME `
+            -n $env:NAMESPACE
+
+          Write-Host ""
+          Write-Host "Ingress details:"
+
+          kubectl describe ingress $env:INGRESS_NAME `
+            -n $env:NAMESPACE
+
+      # --------------------------------------------------
+      # 11. Verify deployed images
       # --------------------------------------------------
       - name: Verify deployed images
         shell: powershell
@@ -156,7 +192,7 @@ jobs:
           Write-Host ""
 
       # --------------------------------------------------
-      # 10. Verify running pods
+      # 12. Verify running pods
       # --------------------------------------------------
       - name: Verify pods
         shell: powershell
@@ -164,7 +200,7 @@ jobs:
           kubectl get pods -n $env:NAMESPACE -o wide
 
       # --------------------------------------------------
-      # 11. Deployment summary
+      # 13. Deployment summary
       # --------------------------------------------------
       - name: Deployment completed
         shell: powershell
@@ -175,4 +211,5 @@ jobs:
           Write-Host "Commit: ${{ github.event.workflow_run.head_sha }}"
           Write-Host "Backend: $env:BACKEND_IMAGE:${{ github.event.workflow_run.head_sha }}"
           Write-Host "Frontend: $env:FRONTEND_IMAGE:${{ github.event.workflow_run.head_sha }}"
+          Write-Host "Ingress: $env:INGRESS_NAME"
           Write-Host "======================================"
